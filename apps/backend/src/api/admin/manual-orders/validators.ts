@@ -1,5 +1,6 @@
 import { z } from "@medusajs/framework/zod"
 import { MANUAL_DELIVERY_STATUSES } from "../../../lib/manual-order-constants"
+import { MAX_VND_AMOUNT } from "../variant-import-prices/validators"
 
 export const createManualOrderSchema = z.object({
   customer_name: z.string().trim().min(1),
@@ -9,6 +10,7 @@ export const createManualOrderSchema = z.object({
   items: z.array(z.object({
     variant_id: z.string().min(1),
     quantity: z.number().int().positive(),
+    unit_price: z.number().int().nonnegative().max(MAX_VND_AMOUNT).nullish(),
   })).min(1),
   shipping_fee: z.number().int().nonnegative(),
   deposit: z.number().int().nonnegative(),

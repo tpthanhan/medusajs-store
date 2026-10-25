@@ -1,11 +1,12 @@
 import { createStep, createWorkflow, StepResponse, transform, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
-import type { IInventoryService } from "@medusajs/framework/types"
+import type { ICustomerModuleService, IInventoryService } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, MedusaError, Modules, OrderStatus, QueryContext } from "@medusajs/framework/utils"
 import { createOrderWorkflow } from "@medusajs/medusa/core-flows"
 import type { z } from "@medusajs/framework/zod"
 import type { createManualOrderSchema } from "../api/admin/manual-orders/validators"
 import { MANUAL_DEPOSIT_REFERENCE, MANUAL_ORDER_CURRENCY, MANUAL_ORDER_METADATA_KEY } from "../lib/manual-order-constants"
 import { resolveVietnamFulfillment } from "../lib/vietnam-fulfillment"
+import { normalizeVietnamesePhone } from "../lib/vietnam-phone"
 
 export type CreateManualOrderInput = z.infer<typeof createManualOrderSchema>
 
@@ -30,6 +31,41 @@ interface PreparedManualOrder {
   shippingOptionId: string
 }
 
+interface ResolvedCustomer {
+  customerId: string
+  phone: string
+}
+
+const resolveManualCustomerStep = createStep(
+  "resolve-manual-customer",
+  async (input: { phone: string; name: string }, { container }) => {
+    const phone = normalizeVietnamesePhone(input.phone)
+
+    const query = container.resolve(ContainerRegistrationKeys.QUERY)
+    const { data: existing } = await query.graph({
+      entity: "customer",
+      fields: ["id"],
+      filters: { phone },
+    })
+    if (existing[0]?.id) {
+      return new StepResponse<ResolvedCustomer, string | null>({ customerId: existing[0].id, phone }, null)
+    }
+
+    const customerModule = container.resolve<ICustomerModuleService>(Modules.CUSTOMER)
+    const created = await customerModule.createCustomers({
+      phone,
+      first_name: input.name,
+      has_account: false,
+    })
+    return new StepResponse<ResolvedCustomer, string | null>({ customerId: created.id, phone }, created.id)
+  },
+  async (createdId: string | null | undefined, { container }) => {
+    if (!createdId) return
+    const customerModule = container.resolve<ICustomerModuleService>(Modules.CUSTOMER)
+    await customerModule.deleteCustomers(createdId)
+  }
+)
+
 const prepareManualOrderStep = createStep(
   "prepare-manual-order",
   async (input: CreateManualOrderInput, { container }) => {
@@ -52,10 +88,14 @@ const prepareManualOrderStep = createStep(
       context: { calculated_price: QueryContext({ currency_code: MANUAL_ORDER_CURRENCY, region_id: input.region_id }) },
     })
     const byId = new Map((variants as unknown as PricedVariant[]).map((variant) => [variant.id, variant]))
-    const items = input.items.map(({ variant_id, quantity }) => {
+    const items = input.items.map(({ variant_id, quantity, unit_price }) => {
       const variant = byId.get(variant_id)
-      const amount = variant?.calculated_price?.calculated_amount
-      if (!variant || typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
+      if (!variant) {
+        throw new MedusaError(MedusaError.Types.INVALID_DATA, `Biến thể ${variant_id} không tồn tại`)
+      }
+      const hasCustomPrice = typeof unit_price === "number" && Number.isFinite(unit_price) && unit_price >= 0
+      const amount = hasCustomPrice ? unit_price : variant.calculated_price?.calculated_amount
+      if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
         throw new MedusaError(MedusaError.Types.INVALID_DATA, `Biến thể ${variant_id} chưa có giá bán VND`)
       }
       return {
@@ -135,12 +175,14 @@ const reserveManualInventoryStep = createStep(
 export const createManualOrderWorkflow = createWorkflow(
   "create-manual-order",
   (input: CreateManualOrderInput) => {
+    const customer = resolveManualCustomerStep({ phone: input.phone, name: input.customer_name })
     const prepared = prepareManualOrderStep(input)
-    const orderInput = transform({ input, prepared }, ({ input, prepared }) => ({
+    const orderInput = transform({ input, prepared, customer }, ({ input, prepared, customer }) => ({
+      customer_id: customer.customerId,
       shipping_address: {
         first_name: input.customer_name,
         address_1: input.address,
-        phone: input.phone,
+        phone: customer.phone,
         country_code: "vn",
       },
       region_id: input.region_id,
