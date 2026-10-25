@@ -12,5 +12,7 @@ module.exports = defineConfig({
       jwtSecret: process.env.JWT_SECRET,
       cookieSecret: process.env.COOKIE_SECRET,
     }
-  }
+  },
+  modules: [{ resolve: "./src/modules/variant-import-pricing" }],
+  plugins: [{ resolve: "@agilo/medusa-analytics-plugin", options: {} }],
 })

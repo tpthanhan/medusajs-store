@@ -55,3 +55,4 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 **/.DS_Store
+/.playwright-cli
