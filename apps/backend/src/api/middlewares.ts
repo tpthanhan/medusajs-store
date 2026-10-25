@@ -1,5 +1,5 @@
 import { configureStoreSearch, defineMiddlewares, validateAndTransformBody } from '@medusajs/framework/http'
-import { createManualOrderSchema, recordManualPaymentSchema } from './admin/manual-orders/validators'
+import { createManualOrderSchema, recordManualPaymentSchema, updateManualDeliveryStatusSchema } from './admin/manual-orders/validators'
 import { updateVariantImportPriceSchema } from './admin/variant-import-prices/validators'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
@@ -20,6 +20,16 @@ export default defineMiddlewares({
       matcher: '/admin/manual-orders/:id/payments',
       methods: ['POST'],
       middlewares: [validateAndTransformBody(recordManualPaymentSchema)],
+    },
+    {
+      matcher: '/admin/manual-orders/:id/payments/:payment_id',
+      methods: ['POST'],
+      middlewares: [validateAndTransformBody(recordManualPaymentSchema)],
+    },
+    {
+      matcher: '/admin/manual-orders/:id/delivery-status',
+      methods: ['POST'],
+      middlewares: [validateAndTransformBody(updateManualDeliveryStatusSchema)],
     },
     {
       method: ['POST'],
