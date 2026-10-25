@@ -2,7 +2,7 @@ import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { calculateManualBalance } from "../../../../lib/manual-order-balance"
 import { deriveDeliveryStatus, type FulfillmentState } from "../../../../lib/manual-delivery-status"
-import { MANUAL_DEPOSIT_REFERENCE, MANUAL_ORDER_CURRENCY, MANUAL_ORDER_METADATA_KEY, MANUAL_PAYMENT_REFERENCE } from "../../../../lib/manual-order-constants"
+import { MANUAL_DEPOSIT_REFERENCE, MANUAL_NOTE_KEY, MANUAL_ORDER_CURRENCY, MANUAL_ORDER_METADATA_KEY, MANUAL_PAYMENT_REFERENCE } from "../../../../lib/manual-order-constants"
 
 export const getManualOrderSummary = async (scope: MedusaContainer, orderId: string) => {
   const query = scope.resolve(ContainerRegistrationKeys.QUERY)
@@ -51,6 +51,7 @@ export const getManualOrderSummary = async (scope: MedusaContainer, orderId: str
     currency_code: MANUAL_ORDER_CURRENCY,
     delivery_status: deliveryStatus,
     payment_captured: isPaidNatively,
+    note: typeof order.metadata?.[MANUAL_NOTE_KEY] === "string" ? (order.metadata[MANUAL_NOTE_KEY] as string) : "",
     total,
     shipping,
     deposit: payments.find((payment) => payment.is_deposit)?.amount ?? 0,

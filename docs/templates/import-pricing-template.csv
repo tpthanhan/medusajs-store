@@ -1,10 +1,10 @@
-﻿product_title,variant_title,sku,option:Gender,option:Size,option:Màu,original_price,import_shipping_price,imported_total_price,market_price
-Áo thun basic,,AO-M-S-DO,Man,S,Đỏ,80000,10000,,150000
-Áo thun basic,,AO-M-S-XA,Man,S,Xanh,80000,10000,,150000
-Áo thun basic,,AO-M-M-DO,Man,M,Đỏ,80000,10000,,160000
-Áo thun basic,,AO-M-M-XA,Man,M,Xanh,80000,10000,,160000
-Áo thun nữ,,AO-W-S-DO,Woman,S,Đỏ,80000,10000,,150000
-Áo thun nữ,,AO-W-M-DO,Woman,M,Đỏ,80000,10000,,160000
-Quần jean,29,QJ-29,,,,,250000,320000
-Quần jean,30,QJ-30,,,,,250000,320000
-Nón lưỡi trai,Mặc định,NON-LT,,,,,,90000
+﻿product_title,brand,variant_title,sku,stock,option:Gender,option:Size,option:Màu,original_price,import_shipping_price,imported_total_price,market_price
+Áo thun basic,Tommy,,AO-M-S-DO,50,Man,S,Đỏ,80000,10000,,150000
+Áo thun basic,Tommy,,AO-M-S-XA,50,Man,S,Xanh,80000,10000,,150000
+Áo thun basic,Tommy,,AO-M-M-DO,30,Man,M,Đỏ,80000,10000,,160000
+Áo thun basic,Tommy,,AO-M-M-XA,30,Man,M,Xanh,80000,10000,,160000
+Áo thun nữ,RL,,AO-W-S-DO,20,Woman,S,Đỏ,80000,10000,,150000
+Áo thun nữ,RL,,AO-W-M-DO,20,Woman,M,Đỏ,80000,10000,,160000
+Quần jean,CK,29,QJ-29,15,,,,,,250000,320000
+Quần jean,CK,30,QJ-30,15,,,,,,250000,320000
+Nón lưỡi trai,,Mặc định,NON-LT,,,,,,,,90000

@@ -3,9 +3,21 @@ import { ContainerRegistrationKeys, MedusaError, ProductStatus } from "@medusajs
 import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
 import type { z } from "@medusajs/framework/zod"
 import { saveVariantImportPriceWorkflow } from "../../../../workflows/save-variant-import-price"
+import { setVariantStockWorkflow } from "../../../../workflows/set-variant-stock"
+import { resolveHcmLocationId } from "../../../../lib/hcm-location"
 import type { importPricingSchema } from "../validators"
 
 type ImportBody = z.infer<typeof importPricingSchema>
+
+const extractErrorMessage = (cause: unknown): string => {
+  if (cause instanceof Error && cause.message) return cause.message
+  if (typeof cause === "string" && cause) return cause
+  if (cause && typeof cause === "object" && "message" in cause) {
+    const message = (cause as { message?: unknown }).message
+    if (typeof message === "string" && message) return message
+  }
+  return "Lỗi không xác định"
+}
 
 const resolveDefaults = async (scope: MedusaRequest["scope"]) => {
   const query = scope.resolve(ContainerRegistrationKeys.QUERY)
@@ -22,6 +34,9 @@ const resolveDefaults = async (scope: MedusaRequest["scope"]) => {
 export const POST = async (req: MedusaRequest<ImportBody>, res: MedusaResponse) => {
   const { products } = req.validatedBody
   const { salesChannelId, shippingProfileId } = await resolveDefaults(req.scope)
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const hasStock = products.some((draft) => draft.variants.some((variant) => variant.stock != null))
+  const locationId = hasStock ? await resolveHcmLocationId(query) : null
 
   const created: Array<{ title: string; id: string; variants: number }> = []
   const failed: Array<{ title: string; error: string }> = []
@@ -35,6 +50,7 @@ export const POST = async (req: MedusaRequest<ImportBody>, res: MedusaResponse) 
             status: ProductStatus.PUBLISHED,
             shipping_profile_id: shippingProfileId,
             sales_channels: [{ id: salesChannelId }],
+            ...(draft.brand ? { metadata: { brand: draft.brand } } : {}),
             options: draft.options.map((option) => ({ title: option.title, values: option.values })),
             variants: draft.variants.map((variant) => ({
               title: variant.title,
@@ -48,16 +64,22 @@ export const POST = async (req: MedusaRequest<ImportBody>, res: MedusaResponse) 
 
       const product = (result as Array<{ id: string; variants?: Array<{ id: string; title: string }> }>)[0]
       for (const draftVariant of draft.variants) {
-        if (!draftVariant.import_pricing) continue
         const variant = product.variants?.find((item) => item.title === draftVariant.title)
         if (!variant) continue
-        await saveVariantImportPriceWorkflow(req.scope).run({
-          input: { variant_id: variant.id, ...draftVariant.import_pricing },
-        })
+        if (draftVariant.import_pricing) {
+          await saveVariantImportPriceWorkflow(req.scope).run({
+            input: { variant_id: variant.id, ...draftVariant.import_pricing },
+          })
+        }
+        if (draftVariant.stock != null && locationId) {
+          await setVariantStockWorkflow(req.scope).run({
+            input: { variant_id: variant.id, quantity: draftVariant.stock, location_id: locationId },
+          })
+        }
       }
       created.push({ title: draft.title, id: product.id, variants: draft.variants.length })
     } catch (cause) {
-      failed.push({ title: draft.title, error: cause instanceof Error ? cause.message : "Lỗi không xác định" })
+      failed.push({ title: draft.title, error: extractErrorMessage(cause) })
     }
   }
 

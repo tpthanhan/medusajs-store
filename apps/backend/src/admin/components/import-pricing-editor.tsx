@@ -33,6 +33,7 @@ interface PricingRow {
   importedTotalPrice: string
   isTotalOverridden: boolean
   marketPrice: string
+  stock: string
   prices: VariantPrice[]
 }
 
@@ -46,6 +47,7 @@ const blankRow = (): PricingRow => ({
   importedTotalPrice: "",
   isTotalOverridden: false,
   marketPrice: "",
+  stock: "",
   prices: [],
 })
 
@@ -70,6 +72,13 @@ const loadProduct = async (productId: string) => {
     const { pricing } = await readJson<{ pricing: StoredImportPrice | null }>(
       await fetch(`/admin/variant-import-prices/${variant.id}`)
     )
+    let stock = ""
+    try {
+      const stockResult = await readJson<{ quantity: number | null }>(await fetch(`/admin/variant-stock/${variant.id}`))
+      stock = stockResult.quantity == null ? "" : String(stockResult.quantity)
+    } catch {
+      stock = ""
+    }
     return {
       id: variant.id,
       title: variant.title,
@@ -80,6 +89,7 @@ const loadProduct = async (productId: string) => {
       importShippingPrice: pricing?.import_shipping_price == null ? "" : String(pricing.import_shipping_price),
       importedTotalPrice: pricing ? String(pricing.imported_total_price) : "",
       isTotalOverridden: pricing?.is_total_overridden ?? false,
+      stock,
     }
   }))
   return { product, rows }
@@ -95,6 +105,15 @@ const saveImportPrice = async (variantId: string, row: PricingRow) => {
       imported_total_price: Number(row.importedTotalPrice),
       is_total_overridden: row.isTotalOverridden,
     }),
+  }))
+}
+
+const saveStock = async (variantId: string, stock: string) => {
+  if (stock.trim() === "") return
+  await readJson(await fetch(`/admin/variant-stock/${variantId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ quantity: Number(stock) }),
   }))
 }
 
@@ -126,7 +145,7 @@ export const ImportPricingEditor = ({ productId }: { productId?: string }) => {
     return () => { active = false }
   }, [productId])
 
-  const changeRow = (index: number, field: "title" | "sku" | "originalPrice" | "importShippingPrice" | "importedTotalPrice" | "marketPrice", value: string) => {
+  const changeRow = (index: number, field: "title" | "sku" | "originalPrice" | "importShippingPrice" | "importedTotalPrice" | "marketPrice" | "stock", value: string) => {
     setRows((current) => current.map((row, rowIndex) => {
       if (rowIndex !== index) return row
       const next = { ...row, [field]: value }
@@ -189,10 +208,16 @@ export const ImportPricingEditor = ({ productId }: { productId?: string }) => {
       }))
       newProductId = product.id
       setCreatedProductId(product.id)
-      for (const row of rows.filter(hasPricingInput)) {
+      for (const row of rows) {
         const variant = product.variants?.find((item) => item.title === row.title.trim())
-        if (!variant) throw new Error(`Sản phẩm đã tạo, nhưng không tìm được biến thể ${row.title} để lưu giá nhập.`)
-        await saveImportPrice(variant.id, row)
+        if (!variant) {
+          if (hasPricingInput(row) || row.stock.trim() !== "") {
+            throw new Error(`Sản phẩm đã tạo, nhưng không tìm được biến thể ${row.title} để lưu giá nhập / tồn kho.`)
+          }
+          continue
+        }
+        if (hasPricingInput(row)) await saveImportPrice(variant.id, row)
+        await saveStock(variant.id, row.stock)
       }
       navigate(`/import-pricing/${product.id}`)
     } catch (cause) {
@@ -223,6 +248,7 @@ export const ImportPricingEditor = ({ productId }: { productId?: string }) => {
         body: JSON.stringify({ prices: withMarketVndPrice(row.prices, Number(row.marketPrice)) }),
       }))
       await saveImportPrice(row.id, row)
+      await saveStock(row.id, row.stock)
       const updated = await loadProduct(productId)
       setRows((current) => current.map((item) => item.id === row.id
         ? updated.rows.find((saved) => saved.id === row.id) ?? item
@@ -255,25 +281,29 @@ export const ImportPricingEditor = ({ productId }: { productId?: string }) => {
           </label>}
           {productId && !rows.length && <p className="text-ui-fg-subtle text-sm">Sản phẩm chưa có biến thể. Hãy thêm biến thể trong Medusa rồi quay lại chỉnh giá.</p>}
           <div className="overflow-x-auto">
-            <div className="min-w-[950px]">
-              <div className="grid grid-cols-5 gap-3 border-b border-ui-border-base pb-2 text-sm font-semibold">
-                <span>Biến thể</span><span>Giá gốc (VND)</span><span>Giá ship về (VND)</span><span>Tổng giá đã nhập (VND) *</span><span>Giá bán thị trường (VND) *</span>
+            <div className="min-w-[1100px]">
+              <div className="grid grid-cols-6 gap-3 border-b border-ui-border-base pb-2 text-sm font-semibold">
+                <span>Biến thể</span><span>Giá gốc (VND)</span><span>Giá ship về (VND)</span><span>Tổng giá đã nhập (VND) *</span><span>Giá bán thị trường (VND) *</span><span>Tồn kho (Kho Q9)</span>
               </div>
               {rows.map((row, index) => (
-                <div key={row.id ?? index} className="grid grid-cols-5 gap-3 border-b border-ui-border-base py-3">
+                <div key={row.id ?? index} className="grid grid-cols-6 gap-3 border-b border-ui-border-base py-3">
                   <div className="flex flex-col gap-2">
                     {productId ? <a className="text-ui-fg-interactive" href={`/app/products/${productId}/variants/${row.id}`}>{row.title}</a> : <input aria-label={`Tên biến thể ${index + 1}`} placeholder="Tên biến thể" className="rounded border border-ui-border-base p-2" value={row.title} onChange={(event) => changeRow(index, "title", event.target.value)} required />}
                     {!productId && <input aria-label={`SKU ${index + 1}`} placeholder="SKU (không bắt buộc)" className="rounded border border-ui-border-base p-2" value={row.sku} onChange={(event) => changeRow(index, "sku", event.target.value)} />}
                     {!productId && rows.length > 1 && <button type="button" onClick={() => setRows((current) => current.filter((_, rowIndex) => rowIndex !== index))} className={btn("danger", "small")}>Xóa biến thể</button>}
                     {productId && <button type="button" disabled={isSaving} onClick={() => void saveVariant(index)} className={btn("primary", "small")}>{isSaving ? "Đang lưu…" : "Lưu biến thể này"}</button>}
                   </div>
-                  {(["originalPrice", "importShippingPrice", "importedTotalPrice", "marketPrice"] as const).map((field) => (
+                  {((["originalPrice", "importShippingPrice", "importedTotalPrice", "marketPrice"] as const).map((field) => (
                     <div key={field} className="flex flex-col gap-1">
                       <input aria-label={`${field} ${row.title || index + 1}`} type="number" min="0" max={MAX_VND_AMOUNT} step="1" className="w-full rounded border border-ui-border-base p-2" value={row[field]} onChange={(event) => changeRow(index, field, event.target.value)} />
                       {field === "importedTotalPrice" && <button type="button" onClick={() => resetTotal(index)} className={btn("ghost", "small")}>Tính lại từ giá gốc + ship</button>}
                       {field === "marketPrice" && row.prices.some((price) => price.rules?.region_id) && <span className="text-ui-fg-subtle text-xs">Giá khu vực VND hiện có sẽ được đồng bộ khi lưu.</span>}
                     </div>
-                  ))}
+                  )))}
+                  <div className="flex flex-col gap-1">
+                    <input aria-label={`Tồn kho ${row.title || index + 1}`} type="number" min="0" step="1" placeholder="Số lượng" className="w-full rounded border border-ui-border-base p-2" value={row.stock} onChange={(event) => changeRow(index, "stock", event.target.value)} />
+                    <span className="text-ui-fg-subtle text-xs">Đặt tồn tại Kho Q9. Bỏ trống = không đổi.</span>
+                  </div>
                 </div>
               ))}
             </div>

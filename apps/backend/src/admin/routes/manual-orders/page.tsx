@@ -55,6 +55,7 @@ const CreateManualOrder = () => {
   const [items, setItems] = useState<OrderItem[]>([])
   const [shippingFee, setShippingFee] = useState(0)
   const [deposit, setDeposit] = useState(0)
+  const [note, setNote] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -163,6 +164,7 @@ const CreateManualOrder = () => {
           }),
           shipping_fee: shippingFee,
           deposit,
+          ...(note.trim() ? { note: note.trim() } : {}),
         }),
       })
       if (!response.ok) {
@@ -224,6 +226,9 @@ const CreateManualOrder = () => {
         </label>
         <label className="flex flex-col gap-1">Tiền đặt cọc đã nhận (VND)
           <input required type="number" min="0" step="1" className="border-ui-border-base rounded border p-2" value={deposit} onChange={(event) => setDeposit(Number(event.target.value))} />
+        </label>
+        <label className="flex flex-col gap-1">Ghi chú đơn hàng
+          <textarea rows={3} maxLength={2000} className="border-ui-border-base rounded border p-2" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ghi chú nội bộ cho đơn (tùy chọn)" />
         </label>
         <Button type="submit" variant="primary" size="large" className="self-start" disabled={isSubmitting} isLoading={isSubmitting}>Tạo đơn hàng</Button>
       </form>

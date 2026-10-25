@@ -4,7 +4,7 @@ import { ContainerRegistrationKeys, MedusaError, Modules, OrderStatus, QueryCont
 import { createOrderWorkflow } from "@medusajs/medusa/core-flows"
 import type { z } from "@medusajs/framework/zod"
 import type { createManualOrderSchema } from "../api/admin/manual-orders/validators"
-import { MANUAL_DEPOSIT_REFERENCE, MANUAL_ORDER_CURRENCY, MANUAL_ORDER_METADATA_KEY } from "../lib/manual-order-constants"
+import { MANUAL_DEPOSIT_REFERENCE, MANUAL_NOTE_KEY, MANUAL_ORDER_CURRENCY, MANUAL_ORDER_METADATA_KEY } from "../lib/manual-order-constants"
 import { resolveVietnamFulfillment } from "../lib/vietnam-fulfillment"
 import { normalizeVietnamesePhone } from "../lib/vietnam-phone"
 
@@ -199,7 +199,10 @@ export const createManualOrderWorkflow = createWorkflow(
       transactions: input.deposit > 0
         ? [{ amount: input.deposit, currency_code: MANUAL_ORDER_CURRENCY, reference: MANUAL_DEPOSIT_REFERENCE }]
         : [],
-      metadata: { [MANUAL_ORDER_METADATA_KEY]: true },
+      metadata: {
+        [MANUAL_ORDER_METADATA_KEY]: true,
+        ...(input.note ? { [MANUAL_NOTE_KEY]: input.note } : {}),
+      },
       no_notification: true,
     }))
     const order = createOrderWorkflow.runAsStep({ input: orderInput })

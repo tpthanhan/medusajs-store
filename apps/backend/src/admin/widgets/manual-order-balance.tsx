@@ -14,6 +14,7 @@ interface ManualOrderSummary {
   tip: number
   delivery_status: ManualDeliveryStatus
   payment_captured: boolean
+  note: string
   payments: Array<{ id: string; amount: number; created_at: string; is_deposit: boolean }>
 }
 
@@ -24,6 +25,8 @@ const ManualOrderBalance = ({ data }: DetailWidgetProps<AdminOrder>) => {
   const [amount, setAmount] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingAmount, setEditingAmount] = useState("")
+  const [noteDraft, setNoteDraft] = useState("")
+  const [isEditingNote, setIsEditingNote] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const queryClient = useQueryClient()
@@ -37,7 +40,10 @@ const ManualOrderBalance = ({ data }: DetailWidgetProps<AdminOrder>) => {
         const response = await fetch(`/admin/manual-orders/${data.id}`)
         if (!response.ok) throw new Error("Không thể tải số dư thanh toán của đơn hàng")
         const result = await response.json() as ManualOrderSummary
-        if (active) setSummary(result)
+        if (active) {
+          setSummary(result)
+          setNoteDraft(result.note ?? "")
+        }
       } catch (cause) {
         if (active) setError(cause instanceof Error ? cause.message : "Không thể tải số dư")
       }
@@ -132,6 +138,30 @@ const ManualOrderBalance = ({ data }: DetailWidgetProps<AdminOrder>) => {
     }
   }
 
+  const saveNote = async () => {
+    setIsSaving(true)
+    setError(null)
+    try {
+      const response = await fetch(`/admin/manual-orders/${data.id}/note`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: noteDraft.trim() }),
+      })
+      if (!response.ok) {
+        const result = await response.json() as { message?: string }
+        throw new Error(result.message ?? "Không thể lưu ghi chú")
+      }
+      const result = await response.json() as ManualOrderSummary
+      setSummary(result)
+      setNoteDraft(result.note ?? "")
+      setIsEditingNote(false)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không thể lưu ghi chú")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const changeDeliveryStatus = async (status: ManualDeliveryStatus) => {
     setIsSaving(true)
     setError(null)
@@ -209,6 +239,19 @@ const ManualOrderBalance = ({ data }: DetailWidgetProps<AdminOrder>) => {
                 : "Đánh dấu đã thanh toán"}
           </button>
           {summary.payment_captured && <span className="text-ui-fg-subtle text-sm">Trạng thái thanh toán gốc: đã thu</span>}
+        </div>
+        <div className="mt-4 flex flex-col gap-2">
+          <span className="text-sm font-medium">Ghi chú đơn hàng</span>
+          {isEditingNote ? <>
+            <textarea rows={3} maxLength={2000} className="border-ui-border-base rounded border p-2 text-sm" value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} placeholder="Ghi chú nội bộ cho đơn (tùy chọn)" />
+            <div className="flex gap-2">
+              <button type="button" disabled={isSaving} onClick={() => void saveNote()} className={btn("primary", "small")}>Lưu ghi chú</button>
+              <button type="button" disabled={isSaving} onClick={() => { setNoteDraft(summary.note ?? ""); setIsEditingNote(false) }} className={btn("secondary", "small")}>Hủy</button>
+            </div>
+          </> : <>
+            {summary.note ? <p className="text-sm whitespace-pre-wrap">{summary.note}</p> : <p className="text-ui-fg-subtle text-sm">Chưa có ghi chú.</p>}
+            <button type="button" disabled={isSaving} onClick={() => { setNoteDraft(summary.note ?? ""); setIsEditingNote(true) }} className={btn("secondary", "small", "self-start")}>{summary.note ? "Sửa ghi chú" : "Thêm ghi chú"}</button>
+          </>}
         </div>
       </>}
     </section>

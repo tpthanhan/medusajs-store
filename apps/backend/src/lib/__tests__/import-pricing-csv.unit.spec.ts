@@ -99,10 +99,23 @@ describe("parseImportPricingCsv", () => {
     expect(errors.some((message) => message.includes("trùng"))).toBe(true)
   })
 
-  it("requires variant_title or an option column", () => {
+  it("creates a single default variant when a product has no option and no variant_title", () => {
     const { products, errors } = parseImportPricingCsv("product_title,market_price\nÁo,150000")
-    expect(products).toEqual([])
-    expect(errors[0]).toContain("variant_title")
+    expect(errors).toEqual([])
+    expect(products).toHaveLength(1)
+    expect(products[0].variants).toHaveLength(1)
+    expect(products[0].variants[0].title).toBe("Mặc định")
+    expect(products[0].options).toEqual([{ title: "Variant", values: ["Mặc định"] }])
+  })
+
+  it("defaults a blank variant_title to a single default variant", () => {
+    const csv = [
+      "product_title,brand,variant_title,market_price",
+      "Nước hoa,CK,,1450000",
+    ].join("\n")
+    const { products, errors } = parseImportPricingCsv(csv)
+    expect(errors).toEqual([])
+    expect(products[0].variants[0].title).toBe("Mặc định")
   })
 
   it("strips a leading UTF-8 BOM (Excel-saved files)", () => {
@@ -112,15 +125,70 @@ describe("parseImportPricingCsv", () => {
     expect(products[0].title).toBe("Áo")
   })
 
+  it("reads an optional brand column and fills it from any row of the product", () => {
+    const csv = [
+      "product_title,brand,variant_title,market_price",
+      "Áo Tommy,Tommy,S,150000",
+      "Áo Tommy,,M,160000",
+      "Áo thuần,,Only,90000",
+    ].join("\n")
+    const { products, errors } = parseImportPricingCsv(csv)
+    expect(errors).toEqual([])
+    const byTitle = Object.fromEntries(products.map((product) => [product.title, product]))
+    expect(byTitle["Áo Tommy"].brand).toBe("Tommy")
+    expect(byTitle["Áo thuần"].brand).toBeNull()
+  })
+
+  it("leaves brand null when the column is absent", () => {
+    const csv = [header, "Áo thun,S,AO-S,80000,10000,,150000"].join("\n")
+    const { products } = parseImportPricingCsv(csv)
+    expect(products[0].brand).toBeNull()
+  })
+
+  it("reads an optional stock column and defaults blanks to null", () => {
+    const csv = [
+      "product_title,variant_title,stock,market_price",
+      "Áo,S,50,150000",
+      "Áo,M,,160000",
+    ].join("\n")
+    const { products, errors } = parseImportPricingCsv(csv)
+    expect(errors).toEqual([])
+    expect(products[0].variants[0].stock).toBe(50)
+    expect(products[0].variants[1].stock).toBeNull()
+  })
+
+  it("rejects duplicate SKUs across the whole file", () => {
+    const csv = [
+      "product_title,variant_title,sku,market_price",
+      "Áo,S,DUP,150000",
+      "Áo,M,DUP,160000",
+    ].join("\n")
+    const { errors } = parseImportPricingCsv(csv)
+    expect(errors.some((message) => message.includes("SKU") && message.includes("trùng"))).toBe(true)
+  })
+
+  it("rejects an invalid stock value", () => {
+    const csv = [
+      "product_title,variant_title,stock,market_price",
+      "Áo,S,-5,150000",
+    ].join("\n")
+    const { errors } = parseImportPricingCsv(csv)
+    expect(errors.some((message) => message.includes("stock"))).toBe(true)
+  })
+
   it("parses the generated template without errors", () => {
     const { products, errors } = parseImportPricingCsv(buildImportPricingTemplateCsv())
     expect(errors).toEqual([])
     expect(products).toHaveLength(4)
     const ao = products.find((product) => product.title === "Áo thun basic")
+    expect(ao?.brand).toBe("Tommy")
+    expect(ao?.variants[0].stock).toBe(50)
     expect(ao?.options.map((option) => option.title)).toEqual(["Gender", "Size", "Màu"])
     expect(ao?.options[0].values).toEqual(["Man"])
     expect(ao?.variants).toHaveLength(4)
     const aoNu = products.find((product) => product.title === "Áo thun nữ")
+    expect(aoNu?.brand).toBe("RL")
     expect(aoNu?.options[0].values).toEqual(["Woman"])
+    expect(products.find((product) => product.title === "Nón lưỡi trai")?.brand).toBeNull()
   })
 })

@@ -2,6 +2,8 @@ export const MANUAL_ORDER_CURRENCY = "vnd"
 export const MANUAL_ORDER_METADATA_KEY = "manual_vnd_order"
 export const MANUAL_DEPOSIT_REFERENCE = "manual_vnd_deposit"
 export const MANUAL_PAYMENT_REFERENCE = "manual_vnd_payment"
+export const MANUAL_NOTE_KEY = "manual_vnd_note"
+export const MANUAL_NOTE_MAX_LENGTH = 2000
 
 export const MANUAL_DELIVERY_STATUSES = ["placed", "awaiting", "delivering", "delivered"] as const
 export type ManualDeliveryStatus = (typeof MANUAL_DELIVERY_STATUSES)[number]

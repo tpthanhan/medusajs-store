@@ -3,8 +3,10 @@ import { calculateImportedTotal } from "./imported-total"
 
 export const IMPORT_PRICING_CSV_HEADERS = [
   "product_title",
+  "brand",
   "variant_title",
   "sku",
+  "stock",
   "original_price",
   "import_shipping_price",
   "imported_total_price",
@@ -13,10 +15,12 @@ export const IMPORT_PRICING_CSV_HEADERS = [
 
 export const OPTION_COLUMN_PREFIX = "option:"
 export const DEFAULT_OPTION_TITLE = "Variant"
+export const DEFAULT_VARIANT_TITLE = "Mặc định"
 
 export interface ImportPricingVariantDraft {
   title: string
   sku: string | null
+  stock: number | null
   options: Record<string, string>
   market_price: number
   import_pricing: {
@@ -29,6 +33,7 @@ export interface ImportPricingVariantDraft {
 
 export interface ImportPricingProductDraft {
   title: string
+  brand: string | null
   options: Array<{ title: string; values: string[] }>
   variants: ImportPricingVariantDraft[]
 }
@@ -87,6 +92,19 @@ const parseVndCell = (raw: string, label: string, line: number, required: boolea
   return { value }
 }
 
+const MAX_STOCK = 1_000_000_000
+
+const parseStockCell = (raw: string, line: number): { value: number | null; error?: string } => {
+  const trimmed = raw.trim()
+  if (trimmed === "") return { value: null }
+  const normalized = trimmed.replace(/[,._\s]/g, "")
+  const value = Number(normalized)
+  if (!Number.isInteger(value) || value < 0 || value > MAX_STOCK) {
+    return { value: null, error: `Dòng ${line}: stock không hợp lệ (${trimmed}) — phải là số nguyên 0..${MAX_STOCK}` }
+  }
+  return { value }
+}
+
 const addOptionValue = (values: Map<string, string[]>, name: string, value: string) => {
   const list = values.get(name) ?? []
   if (!list.includes(value)) list.push(value)
@@ -110,17 +128,14 @@ export const parseImportPricingCsv = (text: string): ParseImportPricingResult =>
     .map(({ label, columnIndex }) => ({ name: label.slice(OPTION_COLUMN_PREFIX.length).trim(), columnIndex }))
     .filter(({ name }) => name !== "")
 
-  const hasVariantTitleColumn = index("variant_title") !== -1
   const missing = (["product_title", "market_price"] as const).filter((name) => index(name) === -1)
   if (missing.length) {
     return { products: [], errors: [`Thiếu cột bắt buộc: ${missing.join(", ")}`] }
   }
-  if (optionColumns.length === 0 && !hasVariantTitleColumn) {
-    return { products: [], errors: [`Cần cột variant_title hoặc ít nhất một cột ${OPTION_COLUMN_PREFIX}<Tên> (vd ${OPTION_COLUMN_PREFIX}Size)`] }
-  }
 
   const productsByTitle = new Map<string, ProductAccumulator>()
   const order: string[] = []
+  const skuLines = new Map<string, number>()
 
   rows.slice(1).forEach((cells, rowIndex) => {
     const line = rowIndex + 2
@@ -130,6 +145,8 @@ export const parseImportPricingCsv = (text: string): ParseImportPricingResult =>
     const productTitle = get("product_title")
     if (!productTitle) { errors.push(`Dòng ${line}: thiếu product_title`); return }
 
+    const brand = get("brand")
+
     const activeOptions = optionColumns
       .map(({ name, columnIndex }) => ({ name, value: getAt(columnIndex) }))
       .filter(({ value }) => value !== "")
@@ -138,13 +155,15 @@ export const parseImportPricingCsv = (text: string): ParseImportPricingResult =>
     let product = productsByTitle.get(productTitle)
     if (!product) {
       product = {
-        draft: { title: productTitle, options: [], variants: [] },
+        draft: { title: productTitle, brand: brand || null, options: [], variants: [] },
         optionNames: activeOptions.length > 0 ? activeNames : null,
         optionValues: new Map(),
         variantKeys: new Set(),
       }
       productsByTitle.set(productTitle, product)
       order.push(productTitle)
+    } else if (!product.draft.brand && brand) {
+      product.draft.brand = brand
     }
 
     const usesOptions = product.optionNames !== null
@@ -172,17 +191,18 @@ export const parseImportPricingCsv = (text: string): ParseImportPricingResult =>
       variantTitle = variantTitleCell || (product.optionNames as string[]).map((name) => variantOptions[name]).join(" / ")
       variantKey = (product.optionNames as string[]).map((name) => variantOptions[name]).join("\u0000")
     } else {
-      if (!variantTitleCell) { errors.push(`Dòng ${line}: thiếu variant_title`); return }
-      variantOptions = { [DEFAULT_OPTION_TITLE]: variantTitleCell }
-      variantTitle = variantTitleCell
-      variantKey = variantTitleCell
+      const effectiveTitle = variantTitleCell || DEFAULT_VARIANT_TITLE
+      variantOptions = { [DEFAULT_OPTION_TITLE]: effectiveTitle }
+      variantTitle = effectiveTitle
+      variantKey = effectiveTitle
     }
 
     const market = parseVndCell(get("market_price"), "market_price", line, true)
     const original = parseVndCell(get("original_price"), "original_price", line, false)
     const shipping = parseVndCell(get("import_shipping_price"), "import_shipping_price", line, false)
     const total = parseVndCell(get("imported_total_price"), "imported_total_price", line, false)
-    for (const result of [market, original, shipping, total]) {
+    const stock = parseStockCell(get("stock"), line)
+    for (const result of [market, original, shipping, total, stock]) {
       if (result.error) errors.push(result.error)
     }
     if (market.value === null) return
@@ -192,6 +212,16 @@ export const parseImportPricingCsv = (text: string): ParseImportPricingResult =>
       return
     }
     product.variantKeys.add(variantKey)
+
+    const sku = get("sku") || null
+    if (sku) {
+      const firstLine = skuLines.get(sku)
+      if (firstLine !== undefined) {
+        errors.push(`Dòng ${line}: SKU "${sku}" bị trùng với dòng ${firstLine} (SKU phải duy nhất)`)
+        return
+      }
+      skuLines.set(sku, line)
+    }
 
     const hasImportInput = original.value !== null || shipping.value !== null || total.value !== null
     const importPricing = hasImportInput
@@ -217,7 +247,8 @@ export const parseImportPricingCsv = (text: string): ParseImportPricingResult =>
 
     product.draft.variants.push({
       title: variantTitle,
-      sku: get("sku") || null,
+      sku,
+      stock: stock.value,
       options: variantOptions,
       market_price: market.value,
       import_pricing: importPricing,
@@ -235,17 +266,17 @@ export const parseImportPricingCsv = (text: string): ParseImportPricingResult =>
 }
 
 export const buildImportPricingTemplateCsv = (): string => {
-  const header = ["product_title", "variant_title", "sku", "option:Gender", "option:Size", "option:Màu", "original_price", "import_shipping_price", "imported_total_price", "market_price"].join(",")
+  const header = ["product_title", "brand", "variant_title", "sku", "stock", "option:Gender", "option:Size", "option:Màu", "original_price", "import_shipping_price", "imported_total_price", "market_price"].join(",")
   const examples = [
-    ["Áo thun basic", "", "AO-M-S-DO", "Man", "S", "Đỏ", "80000", "10000", "", "150000"],
-    ["Áo thun basic", "", "AO-M-S-XA", "Man", "S", "Xanh", "80000", "10000", "", "150000"],
-    ["Áo thun basic", "", "AO-M-M-DO", "Man", "M", "Đỏ", "80000", "10000", "", "160000"],
-    ["Áo thun basic", "", "AO-M-M-XA", "Man", "M", "Xanh", "80000", "10000", "", "160000"],
-    ["Áo thun nữ", "", "AO-W-S-DO", "Woman", "S", "Đỏ", "80000", "10000", "", "150000"],
-    ["Áo thun nữ", "", "AO-W-M-DO", "Woman", "M", "Đỏ", "80000", "10000", "", "160000"],
-    ["Quần jean", "29", "QJ-29", "", "", "", "", "", "250000", "320000"],
-    ["Quần jean", "30", "QJ-30", "", "", "", "", "", "250000", "320000"],
-    ["Nón lưỡi trai", "Mặc định", "NON-LT", "", "", "", "", "", "", "90000"],
+    ["Áo thun basic", "Tommy", "", "AO-M-S-DO", "50", "Man", "S", "Đỏ", "80000", "10000", "", "150000"],
+    ["Áo thun basic", "Tommy", "", "AO-M-S-XA", "50", "Man", "S", "Xanh", "80000", "10000", "", "150000"],
+    ["Áo thun basic", "Tommy", "", "AO-M-M-DO", "30", "Man", "M", "Đỏ", "80000", "10000", "", "160000"],
+    ["Áo thun basic", "Tommy", "", "AO-M-M-XA", "30", "Man", "M", "Xanh", "80000", "10000", "", "160000"],
+    ["Áo thun nữ", "RL", "", "AO-W-S-DO", "20", "Woman", "S", "Đỏ", "80000", "10000", "", "150000"],
+    ["Áo thun nữ", "RL", "", "AO-W-M-DO", "20", "Woman", "M", "Đỏ", "80000", "10000", "", "160000"],
+    ["Quần jean", "CK", "29", "QJ-29", "15", "", "", "", "", "", "250000", "320000"],
+    ["Quần jean", "CK", "30", "QJ-30", "15", "", "", "", "", "", "250000", "320000"],
+    ["Nón lưỡi trai", "", "Mặc định", "NON-LT", "", "", "", "", "", "", "", "90000"],
   ]
   return [header, ...examples.map((cells) => cells.join(","))].join("\n") + "\n"
 }

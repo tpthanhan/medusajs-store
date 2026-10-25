@@ -1,6 +1,6 @@
 ---
 name: edit-manual-order
-description: Complete or correct a manual VND order in this Medusa store — record/edit/delete payments, mark fully paid (native payment badge), and move delivery status placed→awaiting→delivering→delivered driving real fulfillment. Use when the user wants to collect money, fix a wrong payment, mark an order paid, or update shipping/delivery status. Vietnamese VND store.
+description: Complete or correct a manual VND order in this Medusa store — record/edit/delete payments, mark fully paid (native payment badge), edit the order note, and move delivery status placed→awaiting→delivering→delivered driving real fulfillment. Use when the user wants to collect money, fix a wrong payment, mark an order paid, change the order note, or update shipping/delivery status. Vietnamese VND store.
 ---
 
 # Edit / complete a manual order
@@ -17,6 +17,7 @@ Everything happens on the order detail widget **"Thanh toán đơn hàng thủ c
 | Edit/Delete payment | `apps/backend/src/api/admin/manual-orders/[id]/payments/[payment_id]/route.ts` |
 | Mark fully paid | `apps/backend/src/api/admin/manual-orders/[id]/mark-paid/route.ts` |
 | Delivery status (drives fulfillment) | `apps/backend/src/api/admin/manual-orders/[id]/delivery-status/route.ts` |
+| Order note (metadata) | `apps/backend/src/api/admin/manual-orders/[id]/note/route.ts` + `apps/backend/src/workflows/update-manual-order-note.ts` |
 | Pure helpers | `apps/backend/src/lib/manual-order-balance.ts`, `manual-delivery-status.ts`, `manual-order-guard.ts` |
 
 ## Payment endpoints
@@ -29,6 +30,10 @@ Everything happens on the order detail widget **"Thanh toán đơn hàng thủ c
 | `POST .../mark-paid` | none | Records remaining (if any) then marks the order's payment collection paid → native badge turns **Captured** |
 
 The deposit is identified by reference `manual_vnd_deposit` and is read-only. Balance is the source of truth (custom transactions); the native badge follows via mark-paid.
+
+## Order note: `POST .../note` `{ note }`
+
+Sets/updates the order note (≤ 2000 chars) stored in order metadata under `manual_vnd_note`. An **empty string clears** the note. The route guards with `assertManualOrder` then calls `updateManualOrderNoteWorkflow`, which merges metadata via `orderModule.updateOrders` with compensation restoring the previous metadata (never call `updateOrders` directly in the route — `@medusajs/no-service-mutations-in-api-route` forbids it). The note is also settable at creation time via the `note` field on `POST /admin/manual-orders`, and the summary returns it as `note`. The widget shows the note with a "Thêm/Sửa ghi chú" textarea.
 
 ## Delivery status: `POST .../delivery-status` `{ status }`
 
@@ -52,6 +57,7 @@ The deposit is identified by reference `manual_vnd_deposit` and is read-only. Ba
 {
   "delivery_status": "placed|awaiting|delivering|delivered",
   "payment_captured": true,   // native payment badge already Captured?
+  "note": "Giao buổi chiều",   // order note (metadata manual_vnd_note), "" when unset
   "total": 320000, "shipping": 20000, "deposit": 50000,
   "paid": 320000, "remaining": 0, "tip": 0,
   "payments": [ { "id": "...", "amount": 50000, "is_deposit": true, "created_at": "..." } ]

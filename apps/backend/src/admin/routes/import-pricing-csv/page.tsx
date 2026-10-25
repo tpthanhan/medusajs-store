@@ -76,7 +76,9 @@ const ImportPricingCsv = () => {
         <p className="text-ui-fg-subtle text-sm">
           Mỗi dòng là một biến thể. Các dòng cùng <code>product_title</code> gộp thành một sản phẩm.
           Sản phẩm được tạo ở trạng thái đã đăng (published) với shipping profile mặc định.
-          Để SP có nhiều option (ví dụ Size × Màu), thêm cột <code>option:Size</code>, <code>option:Màu</code>… — mỗi dòng là một tổ hợp. Nếu không có cột option nào thì dùng <code>variant_title</code>.
+          Để SP có nhiều option (ví dụ Size × Màu), thêm cột <code>option:Size</code>, <code>option:Màu</code>… — mỗi dòng là một tổ hợp. SP không có option thì dùng <code>variant_title</code>, hoặc để trống cả hai — hệ thống tự tạo một biến thể “Mặc định”.
+          Cột <code>brand</code> (tùy chọn) ghi thương hiệu của sản phẩm (ví dụ Tommy, RL, CK) — lưu vào metadata sản phẩm; chỉ cần điền ở một dòng của mỗi sản phẩm.
+          Cột <code>stock</code> (tùy chọn) ghi số lượng tồn kho ban đầu cho mỗi biến thể tại <strong>Kho Q9</strong>; bỏ trống sẽ không đặt tồn kho.
         </p>
       </div>
 

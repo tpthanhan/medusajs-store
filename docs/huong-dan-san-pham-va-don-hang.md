@@ -56,8 +56,10 @@ Tài liệu này mô tả toàn bộ quy trình trên **Medusa Admin** (`http://
 | Cột | Bắt buộc | Ý nghĩa |
 | --- | --- | --- |
 | `product_title` | ✅ | Tên sản phẩm (gộp nhiều dòng) |
-| `variant_title` | ⬜\* | Tên biến thể. Bắt buộc **khi SP không có cột option**; nếu có option sẽ tự ghép từ giá trị option |
+| `brand` | ⬜ | Thương hiệu (vd Tommy, RL, CK) — lưu vào metadata SP; chỉ cần điền ở 1 dòng của mỗi SP |
+| `variant_title` | ⬜ | Tên biến thể. Nếu có option sẽ tự ghép từ giá trị option; nếu SP không có option và để trống ô này, hệ thống tự đặt biến thể “Mặc định” |
 | `sku` | ⬜ | Mã SKU |
+| `stock` | ⬜ | Tồn kho ban đầu của biến thể tại **Kho Q9**; bỏ trống = không đặt tồn |
 | `option:<Tên>` | ⬜ | Cột option động để tạo SP nhiều thuộc tính. Ví dụ `option:Size`, `option:Màu` |
 | `original_price` | ⬜ | Giá gốc (VND) |
 | `import_shipping_price` | ⬜ | Giá ship về (VND) |
@@ -76,7 +78,7 @@ Tài liệu này mô tả toàn bộ quy trình trên **Medusa Admin** (`http://
 | --- | --- |
 | Mỗi SP tự có bộ option riêng | SP khác nhau trong cùng file có thể dùng bộ option khác nhau (vd SP này Size+Màu, SP kia chỉ Size) |
 | Nhất quán trong 1 SP | Mọi dòng của cùng một SP phải điền đúng cùng bộ cột option, nếu không sẽ báo lỗi |
-| Không có cột option nào | Rơi về một option mặc định tên `Variant`, dùng `variant_title` |
+| Không có cột option nào | Rơi về một option mặc định tên `Variant`; dùng `variant_title`, hoặc để trống để tự tạo biến thể “Mặc định” |
 | Biến thể trùng | Trùng tổ hợp giá trị option (hoặc trùng `variant_title`) trong cùng SP sẽ báo lỗi |
 
 > Chỉ dòng có **ít nhất một cột giá nhập** mới lưu bản ghi giá nhập riêng. Mỗi sản phẩm được tạo độc lập: một sản phẩm lỗi không chặn các sản phẩm còn lại (kết quả hiện số tạo được / thất bại).
@@ -102,11 +104,13 @@ Dùng khi nhân viên nhập đơn thay khách. Khách **không cần email** �
 | --- | --- | --- |
 | Tên khách hàng | ✅ | Lưu vào địa chỉ giao hàng |
 | Địa chỉ | ✅ | Địa chỉ giao hàng |
-| Số điện thoại | ✅ | SĐT khách |
+| Số điện thoại | ✅ | SĐT khách. Tự chuẩn hóa về dạng `0xxxxxxxxx` (ví dụ `+84 358 635 797` → `0358635797`). Hệ thống **tìm hoặc tạo khách hàng** theo số này |
 | Khu vực sử dụng VND | ✅ | Chọn **Vietnam** |
 | Sản phẩm | ✅ ít nhất 1 biến thể | Bấm **Chọn sản phẩm** mở popup |
+| Giá bán tùy chỉnh (VND) | ⬜ | Mỗi sản phẩm đã chọn có ô giá riêng, **điền sẵn giá bán hiện tại**; sửa nếu muốn bán giá khác cho đơn này |
 | Phí vận chuyển thủ công (VND) | ⬜ (mặc định 0) | Phí ship nhập tay, cộng vào tổng đơn |
 | Tiền đặt cọc đã nhận (VND) | ⬜ (mặc định 0) | Số tiền đã nhận trước, ghi vào lịch sử thanh toán |
+| Ghi chú đơn hàng | ⬜ | Ghi chú nội bộ (≤ 2000 ký tự), lưu cùng đơn; có thể sửa sau trên trang chi tiết |
 
 ### Popup chọn sản phẩm
 
@@ -121,12 +125,13 @@ Dùng khi nhân viên nhập đơn thay khách. Khách **không cần email** �
 ### Sau khi bấm "Tạo đơn hàng"
 
 - Hệ thống tạo đơn với line item **yêu cầu giao hàng** (`requires_shipping: true`), gắn phương thức vận chuyển Việt Nam và **tạo reservation tồn kho tại Kho Q9** cho biến thể quản lý kho.
-- Đơn được đánh dấu metadata `manual_vnd_order` để widget nhận diện.
+- **Khách hàng được tìm hoặc tạo mới** theo số điện thoại đã chuẩn hóa và gắn vào đơn; không tạo email giả.
+- Đơn được đánh dấu metadata `manual_vnd_order` để widget nhận diện; ghi chú (nếu có) lưu ở `manual_vnd_note`.
 - Tự chuyển sang trang chi tiết đơn vừa tạo.
 
 | Công thức | Giá trị |
 | --- | --- |
-| Tổng đơn | (Giá bán × số lượng) + Phí vận chuyển |
+| Tổng đơn | (Giá bán tùy chỉnh hoặc giá mặc định × số lượng) + Phí vận chuyển |
 | Còn phải thu ngay sau khi tạo | Tổng đơn − Tiền đặt cọc |
 
 > ❗ Lỗi thường gặp: *"Variants ... do not exist or belong to a product that is not published"* → sản phẩm đang **nháp**. Sản phẩm tạo qua trang tùy biến đã tự Published; nếu tạo bằng màn hình Medusa gốc, nhớ Publish trước.
@@ -178,6 +183,10 @@ Bốn nút chuyển trạng thái **chỉ tiến, không lùi**. Mỗi bước �
 | Nhảy bước (vd placed → delivered) | Tự tạo các bước trung gian (fulfillment → shipment) cho đúng máy trạng thái |
 | Badge gốc tự cập nhật | Sau mỗi thao tác, cache admin được làm mới; **không cần reload** (reload sẽ mất phiên đăng nhập) |
 
+### Ghi chú đơn hàng
+
+Widget có mục **Ghi chú đơn hàng**: bấm **Thêm/Sửa ghi chú** để nhập (≤ 2000 ký tự) rồi **Lưu ghi chú**. Ghi chú lưu trong metadata đơn (`manual_vnd_note`); lưu chuỗi rỗng sẽ xoá ghi chú. Có thể nhập ngay khi tạo đơn (ô "Ghi chú đơn hàng" trên form).
+
 ---
 
 ## 4. Hạ tầng & tham chiếu nhanh
@@ -202,6 +211,7 @@ Bốn nút chuyển trạng thái **chỉ tiến, không lùi**. Mỗi bước �
 | `DELETE /admin/manual-orders/:id/payments/:payment_id` | Xóa khoản thu (trừ đặt cọc) |
 | `POST /admin/manual-orders/:id/mark-paid` | Đánh dấu đã thanh toán đủ (đồng bộ badge) |
 | `POST /admin/manual-orders/:id/delivery-status` | Đổi trạng thái giao (driving fulfillment thật) |
+| `POST /admin/manual-orders/:id/note` | Sửa ghi chú đơn (gửi `""` để xoá ghi chú) |
 | `GET /admin/variant-import-prices/:variant_id` | Đọc giá nhập riêng của biến thể |
 | `POST /admin/variant-import-prices/:variant_id` | Lưu giá nhập riêng của biến thể |
 | `POST /admin/import-pricing/import` | Nhập hàng loạt sản phẩm + giá nhập (body `{ products: [...] }`) |
@@ -214,6 +224,7 @@ Bốn nút chuyển trạng thái **chỉ tiến, không lùi**. Mỗi bước �
   "currency_code": "vnd",
   "delivery_status": "placed | awaiting | delivering | delivered",
   "payment_captured": true,          // badge thanh toán gốc đã "Captured"?
+  "note": "Giao buổi chiều",           // ghi chú đơn (metadata manual_vnd_note), "" nếu chưa có
   "total": 320000,                   // tổng đơn (gồm ship)
   "shipping": 20000,
   "deposit": 50000,
