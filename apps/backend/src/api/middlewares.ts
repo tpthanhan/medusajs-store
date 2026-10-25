@@ -1,6 +1,7 @@
 import { configureStoreSearch, defineMiddlewares, validateAndTransformBody } from '@medusajs/framework/http'
 import { createManualOrderSchema, recordManualPaymentSchema, updateManualDeliveryStatusSchema } from './admin/manual-orders/validators'
 import { updateVariantImportPriceSchema } from './admin/variant-import-prices/validators'
+import { importPricingSchema } from './admin/import-pricing/validators'
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
 // the route narrows it to published products in the key's sales channels.
@@ -10,6 +11,11 @@ export default defineMiddlewares({
       matcher: '/admin/variant-import-prices/:id',
       methods: ['POST'],
       middlewares: [validateAndTransformBody(updateVariantImportPriceSchema)],
+    },
+    {
+      matcher: '/admin/import-pricing/import',
+      methods: ['POST'],
+      middlewares: [validateAndTransformBody(importPricingSchema)],
     },
     {
       matcher: '/admin/manual-orders',
