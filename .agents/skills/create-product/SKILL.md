@@ -47,9 +47,9 @@ For many products at once use `POST /admin/import-pricing/import` with `{ produc
 
 CSV columns (one row per variant): `product_title, variant_title, sku, original_price, import_shipping_price, imported_total_price, market_price` plus optional dynamic `option:<Name>` columns. `market_price` is required per row; a blank `imported_total_price` is computed as original + shipping; import record is created only when a row has any import-cost column.
 
-**Multi-option products (Size × Màu):** add `option:Size`, `option:Màu`… columns — each row is one combination; the parser derives each product's `options[]` (title + distinct values) and each variant's `options` map, auto-deriving `variant_title` when blank. Each product picks its own option set from its non-empty option columns, which must stay consistent across that product's rows; with no `option:*` columns it falls back to a single `Variant` option using `variant_title`. The import route passes `draft.options` and `variant.options` straight into `createProductsWorkflow`.
+**Multi-option products (Gender × Size × Màu):** add `option:Gender`, `option:Size`, `option:Màu`… columns — each row is one combination; the parser derives each product's `options[]` (title + distinct values) and each variant's `options` map, auto-deriving `variant_title` when blank. Use the exact option names and values configured in the product catalog: the CSV template demonstrates `Gender` values `Man` and `Woman`. The parser does not translate `Nam`/`Nữ`; map those to `Man`/`Woman` before importing if the source CSV uses Vietnamese labels. Every row of one product must have values for the same option set; different products may use different option sets. With no `option:*` columns, it falls back to a single `Variant` option using `variant_title`. The import route passes `draft.options` and `variant.options` straight into `createProductsWorkflow`.
 
-Template: `docs/templates/import-pricing-template.csv` (or the page's "Tải mẫu CSV" button). Parser unit tests: `apps/backend/src/lib/__tests__/import-pricing-csv.unit.spec.ts`.
+Template: `docs/templates/import-pricing-template.csv` (or the page's "Tải mẫu CSV" button); it includes Gender, Size, and Màu examples. Parser unit tests: `apps/backend/src/lib/__tests__/import-pricing-csv.unit.spec.ts`.
 
 ## Inventory gotcha
 
