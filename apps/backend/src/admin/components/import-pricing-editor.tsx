@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react"
+import { btn } from "../lib/button-class"
 import { useNavigate } from "react-router-dom"
 import { getMarketVndPrice, withMarketVndPrice, type VariantPrice } from "../lib/variant-price-fields"
 import { hasPricingInput, validateVariantPricing } from "../lib/variant-pricing-validation"
@@ -263,13 +264,13 @@ export const ImportPricingEditor = ({ productId }: { productId?: string }) => {
                   <div className="flex flex-col gap-2">
                     {productId ? <a className="text-ui-fg-interactive" href={`/app/products/${productId}/variants/${row.id}`}>{row.title}</a> : <input aria-label={`Tên biến thể ${index + 1}`} placeholder="Tên biến thể" className="rounded border border-ui-border-base p-2" value={row.title} onChange={(event) => changeRow(index, "title", event.target.value)} required />}
                     {!productId && <input aria-label={`SKU ${index + 1}`} placeholder="SKU (không bắt buộc)" className="rounded border border-ui-border-base p-2" value={row.sku} onChange={(event) => changeRow(index, "sku", event.target.value)} />}
-                    {!productId && rows.length > 1 && <button type="button" className="text-ui-fg-error text-left text-sm" onClick={() => setRows((current) => current.filter((_, rowIndex) => rowIndex !== index))}>Xóa biến thể</button>}
-                    {productId && <button type="button" disabled={isSaving} className="bg-ui-button-inverted text-ui-fg-on-inverted rounded px-3 py-2 text-sm disabled:opacity-50" onClick={() => void saveVariant(index)}>{isSaving ? "Đang lưu…" : "Lưu biến thể này"}</button>}
+                    {!productId && rows.length > 1 && <button type="button" onClick={() => setRows((current) => current.filter((_, rowIndex) => rowIndex !== index))} className={btn("danger", "small")}>Xóa biến thể</button>}
+                    {productId && <button type="button" disabled={isSaving} onClick={() => void saveVariant(index)} className={btn("primary", "small")}>{isSaving ? "Đang lưu…" : "Lưu biến thể này"}</button>}
                   </div>
                   {(["originalPrice", "importShippingPrice", "importedTotalPrice", "marketPrice"] as const).map((field) => (
                     <div key={field} className="flex flex-col gap-1">
                       <input aria-label={`${field} ${row.title || index + 1}`} type="number" min="0" max={MAX_VND_AMOUNT} step="1" className="w-full rounded border border-ui-border-base p-2" value={row[field]} onChange={(event) => changeRow(index, field, event.target.value)} />
-                      {field === "importedTotalPrice" && <button type="button" className="text-ui-fg-interactive text-left text-xs" onClick={() => resetTotal(index)}>Tính lại từ giá gốc + ship</button>}
+                      {field === "importedTotalPrice" && <button type="button" onClick={() => resetTotal(index)} className={btn("ghost", "small")}>Tính lại từ giá gốc + ship</button>}
                       {field === "marketPrice" && row.prices.some((price) => price.rules?.region_id) && <span className="text-ui-fg-subtle text-xs">Giá khu vực VND hiện có sẽ được đồng bộ khi lưu.</span>}
                     </div>
                   ))}
@@ -280,8 +281,8 @@ export const ImportPricingEditor = ({ productId }: { productId?: string }) => {
           {!productId && <p className="text-ui-fg-subtle text-sm">Có thể để trống giá của biến thể chưa cần định giá. Sản phẩm mới được đăng (published) ngay; sau khi tạo, hãy hoàn thiện ảnh, tồn kho và kênh bán trên trang Medusa.</p>}
           {productId && <p className="text-ui-fg-subtle text-sm">Chỉ lưu biến thể bạn chọn; các biến thể khác không bắt buộc nhập giá.</p>}
           <div className="flex items-center justify-between gap-3">
-            {!productId ? <button type="button" className="text-ui-fg-interactive" onClick={() => setRows((current) => [...current, blankRow()])}>+ Thêm biến thể</button> : <span />}
-            {!productId && <button disabled={isSaving || !rows.length} type="submit" className="bg-ui-button-inverted text-ui-fg-on-inverted rounded px-4 py-2 disabled:opacity-50">{isSaving ? "Đang lưu…" : "Tạo sản phẩm"}</button>}
+            {!productId ? <button type="button" onClick={() => setRows((current) => [...current, blankRow()])} className={btn("secondary", "base")}>+ Thêm biến thể</button> : <span />}
+            {!productId && <button disabled={isSaving || !rows.length} type="submit" className={btn("primary", "large")}>{isSaving ? "Đang lưu…" : "Tạo sản phẩm"}</button>}
           </div>
         </form>
       )}

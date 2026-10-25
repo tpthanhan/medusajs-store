@@ -56,12 +56,28 @@ Tài liệu này mô tả toàn bộ quy trình trên **Medusa Admin** (`http://
 | Cột | Bắt buộc | Ý nghĩa |
 | --- | --- | --- |
 | `product_title` | ✅ | Tên sản phẩm (gộp nhiều dòng) |
-| `variant_title` | ✅ | Tên biến thể (duy nhất trong 1 sản phẩm) |
+| `variant_title` | ⬜\* | Tên biến thể. Bắt buộc **khi SP không có cột option**; nếu có option sẽ tự ghép từ giá trị option |
 | `sku` | ⬜ | Mã SKU |
+| `option:<Tên>` | ⬜ | Cột option động để tạo SP nhiều thuộc tính. Ví dụ `option:Size`, `option:Màu` |
 | `original_price` | ⬜ | Giá gốc (VND) |
 | `import_shipping_price` | ⬜ | Giá ship về (VND) |
 | `imported_total_price` | ⬜ | Tổng giá đã nhập — bỏ trống sẽ tự tính = gốc + ship; điền tay = ghi đè |
 | `market_price` | ✅ | Giá bán thị trường (VND) |
+
+**Sản phẩm nhiều option (Size × Màu):** thêm các cột `option:Size`, `option:Màu`… Mỗi dòng là **một tổ hợp** (vd `S, Đỏ`). Hệ thống tự suy ra danh sách option và giá trị cho từng sản phẩm.
+
+| product_title | option:Size | option:Màu | market_price |
+| --- | --- | --- | --- |
+| Áo thun | S | Đỏ | 150000 |
+| Áo thun | S | Xanh | 150000 |
+| Áo thun | M | Đỏ | 160000 |
+
+| Quy tắc option | Chi tiết |
+| --- | --- |
+| Mỗi SP tự có bộ option riêng | SP khác nhau trong cùng file có thể dùng bộ option khác nhau (vd SP này Size+Màu, SP kia chỉ Size) |
+| Nhất quán trong 1 SP | Mọi dòng của cùng một SP phải điền đúng cùng bộ cột option, nếu không sẽ báo lỗi |
+| Không có cột option nào | Rơi về một option mặc định tên `Variant`, dùng `variant_title` |
+| Biến thể trùng | Trùng tổ hợp giá trị option (hoặc trùng `variant_title`) trong cùng SP sẽ báo lỗi |
 
 > Chỉ dòng có **ít nhất một cột giá nhập** mới lưu bản ghi giá nhập riêng. Mỗi sản phẩm được tạo độc lập: một sản phẩm lỗi không chặn các sản phẩm còn lại (kết quả hiện số tạo được / thất bại).
 

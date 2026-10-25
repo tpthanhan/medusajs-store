@@ -1,4 +1,5 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
+import { btn } from "../lib/button-class"
 import type { AdminOrder, DetailWidgetProps } from "@medusajs/framework/types"
 import { useEffect, useState, type FormEvent } from "react"
 import { useQueryClient } from "@tanstack/react-query"
@@ -164,8 +165,7 @@ const ManualOrderBalance = ({ data }: DetailWidgetProps<AdminOrder>) => {
             {MANUAL_DELIVERY_STATUSES.map((status) => {
               const current = summary.delivery_status ?? DEFAULT_MANUAL_DELIVERY_STATUS
               const isActive = current === status
-              return <button key={status} type="button" disabled={isSaving || isActive} onClick={() => void changeDeliveryStatus(status)}
-                className={`rounded border px-3 py-1 text-sm disabled:opacity-60 ${isActive ? "bg-ui-button-inverted text-ui-fg-on-inverted border-transparent" : "border-ui-border-base"}`}>
+              return <button key={status} type="button" disabled={isSaving || isActive} onClick={() => void changeDeliveryStatus(status)} className={btn(isActive ? "primary" : "secondary", "small")}>
                 {MANUAL_DELIVERY_STATUS_LABELS[status]}
               </button>
             })}
@@ -183,13 +183,13 @@ const ManualOrderBalance = ({ data }: DetailWidgetProps<AdminOrder>) => {
           <li key={payment.id} className="flex flex-wrap items-center gap-2">
             {editingId === payment.id ? <>
               <input aria-label="Sửa khoản thanh toán" type="number" min="1" step="1" className="border-ui-border-base w-32 rounded border p-1" value={editingAmount} onChange={(event) => setEditingAmount(event.target.value)} />
-              <button type="button" disabled={isSaving || Number(editingAmount) < 1} className="text-ui-fg-interactive" onClick={() => void updatePayment(payment.id, Number(editingAmount))}>Lưu</button>
-              <button type="button" disabled={isSaving} className="text-ui-fg-subtle" onClick={() => { setEditingId(null); setEditingAmount("") }}>Hủy</button>
+              <button type="button" disabled={isSaving || Number(editingAmount) < 1} onClick={() => void updatePayment(payment.id, Number(editingAmount))} className={btn("primary", "small")}>Lưu</button>
+              <button type="button" disabled={isSaving} onClick={() => { setEditingId(null); setEditingAmount("") }} className={btn("secondary", "small")}>Hủy</button>
             </> : <>
               <span>{formatVnd(payment.amount)} — {new Date(payment.created_at).toLocaleString("vi-VN")}{payment.is_deposit ? " (đặt cọc)" : ""}</span>
               {!payment.is_deposit && <>
-                <button type="button" disabled={isSaving} className="text-ui-fg-interactive" onClick={() => { setEditingId(payment.id); setEditingAmount(String(payment.amount)) }}>Sửa</button>
-                <button type="button" disabled={isSaving} className="text-ui-fg-error" onClick={() => void deletePayment(payment.id)}>Xóa</button>
+                <button type="button" disabled={isSaving} onClick={() => { setEditingId(payment.id); setEditingAmount(String(payment.amount)) }} className={btn("secondary", "small")}>Sửa</button>
+                <button type="button" disabled={isSaving} onClick={() => void deletePayment(payment.id)} className={btn("danger", "small")}>Xóa</button>
               </>}
             </>}
           </li>
@@ -198,11 +198,10 @@ const ManualOrderBalance = ({ data }: DetailWidgetProps<AdminOrder>) => {
           <label className="flex flex-col gap-1 text-sm">Khoản thanh toán thêm đã nhận (VND)
             <input required type="number" min="1" step="1" className="border-ui-border-base rounded border p-2" value={amount} onChange={(event) => setAmount(event.target.value)} />
           </label>
-          <button type="submit" disabled={isSaving} className="bg-ui-button-inverted text-ui-fg-on-inverted rounded px-3 py-2 text-sm disabled:opacity-50">Ghi nhận thanh toán</button>
+          <button type="submit" disabled={isSaving} className={btn("primary", "base")}>Ghi nhận thanh toán</button>
         </form>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" disabled={isSaving || (summary.remaining <= 0 && summary.payment_captured)} onClick={() => void markFullyPaid()}
-            className="bg-ui-button-inverted text-ui-fg-on-inverted rounded px-3 py-2 text-sm disabled:opacity-50">
+          <button type="button" disabled={isSaving || (summary.remaining <= 0 && summary.payment_captured)} onClick={() => void markFullyPaid()} className={btn("primary", "base")}>
             {summary.payment_captured && summary.remaining <= 0
               ? "Đã thanh toán đủ"
               : summary.remaining > 0

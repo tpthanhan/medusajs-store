@@ -1,5 +1,8 @@
-product_title,variant_title,sku,original_price,import_shipping_price,imported_total_price,market_price
-Áo thun basic,S,AO-BASIC-S,80000,10000,,150000
-Áo thun basic,M,AO-BASIC-M,80000,10000,,150000
-Áo thun basic,L,AO-BASIC-L,,,95000,160000
-Nón lưỡi trai,Mặc định,NON-LT,,,,90000
+﻿product_title,variant_title,sku,option:Size,option:Màu,original_price,import_shipping_price,imported_total_price,market_price
+Áo thun basic,,AO-S-DO,S,Đỏ,80000,10000,,150000
+Áo thun basic,,AO-S-XA,S,Xanh,80000,10000,,150000
+Áo thun basic,,AO-M-DO,M,Đỏ,80000,10000,,160000
+Áo thun basic,,AO-M-XA,M,Xanh,80000,10000,,160000
+Quần jean,,QJ-29,29,,,,250000,320000
+Quần jean,,QJ-30,30,,,,250000,320000
+Nón lưỡi trai,Mặc định,NON-LT,,,,,,90000

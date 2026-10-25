@@ -1,4 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
+import { btn } from "../../lib/button-class"
 import { ArrowUpTray } from "@medusajs/icons"
 import { useState, type ChangeEvent } from "react"
 import {
@@ -38,7 +39,7 @@ const ImportPricingCsv = () => {
   }
 
   const downloadTemplate = () => {
-    const blob = new Blob([buildImportPricingTemplateCsv()], { type: "text/csv;charset=utf-8" })
+    const blob = new Blob(["\uFEFF", buildImportPricingTemplateCsv()], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
@@ -75,15 +76,16 @@ const ImportPricingCsv = () => {
         <p className="text-ui-fg-subtle text-sm">
           Mỗi dòng là một biến thể. Các dòng cùng <code>product_title</code> gộp thành một sản phẩm.
           Sản phẩm được tạo ở trạng thái đã đăng (published) với shipping profile mặc định.
+          Để SP có nhiều option (ví dụ Size × Màu), thêm cột <code>option:Size</code>, <code>option:Màu</code>… — mỗi dòng là một tổ hợp. Nếu không có cột option nào thì dùng <code>variant_title</code>.
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={downloadTemplate} className="text-ui-fg-interactive text-sm underline">
+        <button type="button" onClick={downloadTemplate} className={btn("secondary", "small")}>
           Tải mẫu CSV
         </button>
         <span className="text-ui-fg-subtle text-sm">
-          Cột: {IMPORT_PRICING_CSV_HEADERS.join(", ")}
+          Cột cơ bản: {IMPORT_PRICING_CSV_HEADERS.join(", ")} (+ tùy chọn các cột option:&lt;Tên&gt;)
         </span>
       </div>
 
@@ -108,7 +110,7 @@ const ImportPricingCsv = () => {
         type="button"
         disabled={isImporting || !products.length || parseErrors.length > 0}
         onClick={() => void runImport()}
-        className="bg-ui-button-inverted text-ui-fg-on-inverted w-fit rounded-md px-4 py-2 text-sm disabled:opacity-50"
+        className={btn("primary", "large", "w-fit")}
       >
         {isImporting ? "Đang nhập..." : `Nhập ${products.length} sản phẩm`}
       </button>

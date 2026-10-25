@@ -35,11 +35,11 @@ export const POST = async (req: MedusaRequest<ImportBody>, res: MedusaResponse) 
             status: ProductStatus.PUBLISHED,
             shipping_profile_id: shippingProfileId,
             sales_channels: [{ id: salesChannelId }],
-            options: [{ title: "Variant", values: draft.variants.map((variant) => variant.title) }],
+            options: draft.options.map((option) => ({ title: option.title, values: option.values })),
             variants: draft.variants.map((variant) => ({
               title: variant.title,
               ...(variant.sku ? { sku: variant.sku } : {}),
-              options: { Variant: variant.title },
+              options: variant.options,
               prices: [{ currency_code: "vnd", amount: variant.market_price }],
             })),
           }],

@@ -1,4 +1,5 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
+import { btn } from "../lib/button-class"
 import type { AdminProductVariant, DetailWidgetProps } from "@medusajs/framework/types"
 import { useEffect, useState, type FormEvent } from "react"
 import { getMarketVndPrice, withMarketVndPrice, type VariantPrice } from "../lib/variant-price-fields"
@@ -165,10 +166,10 @@ const VariantImportPricing = ({ data }: DetailWidgetProps<AdminProductVariant>) 
             </label>
           ))}
         </div>
-        <button type="button" className="text-ui-fg-interactive self-start text-sm" onClick={resetTotal}>Tính lại tổng từ giá gốc + ship</button>
+        <button type="button" onClick={resetTotal} className={btn("ghost", "small", "self-start")}>Tính lại tổng từ giá gốc + ship</button>
         <div className="flex items-center justify-between gap-3">
           <a className="text-ui-fg-interactive text-sm" href={`/app/import-pricing/${data.product_id}`}>Chỉnh giá các biến thể khác →</a>
-          <button type="submit" disabled={isSaving} className="bg-ui-button-inverted text-ui-fg-on-inverted rounded px-4 py-2 disabled:opacity-50">{isSaving ? "Đang lưu…" : "Lưu giá"}</button>
+          <button type="submit" disabled={isSaving} className={btn("primary", "large")}>{isSaving ? "Đang lưu…" : "Lưu giá"}</button>
         </div>
       </form>}
     </section>

@@ -1,4 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
+import { btn } from "../../lib/button-class"
 import { useEffect, useRef, useState, type FormEvent } from "react"
 
 interface Region {
@@ -176,10 +177,10 @@ const CreateManualOrder = () => {
             <div key={item.variant_id} className="flex items-center gap-2">
               <span className="min-w-0 flex-1 truncate" title={item.label}>{item.label}</span>
               <input aria-label={`Số lượng ${item.label}`} required type="number" min="1" step="1" className="border-ui-border-base w-24 rounded border p-2" value={item.quantity} onChange={(event) => setItems((current) => current.map((row) => row.variant_id === item.variant_id ? { ...row, quantity: Number(event.target.value) } : row))} />
-              <button type="button" onClick={() => setItems((current) => current.filter((row) => row.variant_id !== item.variant_id))}>Xóa</button>
+              <button type="button" onClick={() => setItems((current) => current.filter((row) => row.variant_id !== item.variant_id))} className={btn("danger", "small")}>Xóa</button>
             </div>
           ))}
-          <button type="button" className="text-ui-fg-interactive self-start" onClick={() => setIsPickerOpen(true)}>Chọn sản phẩm</button>
+          <button type="button" onClick={() => setIsPickerOpen(true)} className={btn("secondary", "base", "self-start")}>Chọn sản phẩm</button>
         </div>
         <label className="flex flex-col gap-1">Phí vận chuyển thủ công (VND)
           <input required type="number" min="0" step="1" className="border-ui-border-base rounded border p-2" value={shippingFee} onChange={(event) => setShippingFee(Number(event.target.value))} />
@@ -187,13 +188,13 @@ const CreateManualOrder = () => {
         <label className="flex flex-col gap-1">Tiền đặt cọc đã nhận (VND)
           <input required type="number" min="0" step="1" className="border-ui-border-base rounded border p-2" value={deposit} onChange={(event) => setDeposit(Number(event.target.value))} />
         </label>
-        <button type="submit" disabled={isSubmitting} className="bg-ui-button-inverted text-ui-fg-on-inverted self-start rounded px-4 py-2 disabled:opacity-50">{isSubmitting ? "Đang tạo…" : "Tạo đơn hàng"}</button>
+        <button type="submit" disabled={isSubmitting} className={btn("primary", "large", "self-start")}>{isSubmitting ? "Đang tạo…" : "Tạo đơn hàng"}</button>
       </form>
       <dialog ref={dialogRef} onClose={() => setIsPickerOpen(false)} aria-labelledby="product-picker-title" className="bg-ui-bg-base text-ui-fg-base border-ui-border-base max-h-[85vh] w-full max-w-2xl rounded-lg border p-0 shadow-xl backdrop:bg-black/50">
         <div className="flex max-h-[85vh] flex-col">
           <div className="border-ui-border-base flex items-center justify-between border-b p-5">
             <h2 id="product-picker-title" className="text-lg font-semibold">Chọn sản phẩm trong hệ thống</h2>
-            <button type="button" aria-label="Đóng" onClick={() => setIsPickerOpen(false)}>Đóng</button>
+            <button type="button" aria-label="Đóng" onClick={() => setIsPickerOpen(false)} className={btn("ghost", "small")}>Đóng</button>
           </div>
           <div className="flex flex-col gap-3 p-5">
             <label className="flex flex-col gap-1 text-sm">Tìm theo tên sản phẩm
@@ -210,7 +211,7 @@ const CreateManualOrder = () => {
                   const isSelected = items.some((item) => item.variant_id === variant.id)
                   return <div key={variant.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                     <span>{variant.title}</span>
-                    <button type="button" disabled={isSelected} className="text-ui-fg-interactive disabled:text-ui-fg-subtle" onClick={() => addVariant(product, variant)}>{isSelected ? "Đã chọn" : "Thêm vào đơn"}</button>
+                    <button type="button" disabled={isSelected} onClick={() => addVariant(product, variant)} className={btn("secondary", "small")}>{isSelected ? "Đã chọn" : "Thêm vào đơn"}</button>
                   </div>
                 })}
               </div>
@@ -219,9 +220,9 @@ const CreateManualOrder = () => {
           <div className="border-ui-border-base flex items-center justify-between border-t p-5 text-sm">
             <span>{productCount} sản phẩm · Đã chọn {items.length} biến thể</span>
             <div className="flex gap-3">
-              <button type="button" disabled={productOffset === 0 || isLoadingProducts} onClick={() => setProductOffset((offset) => Math.max(0, offset - PRODUCT_PAGE_LIMIT))}>Trước</button>
-              <button type="button" disabled={productOffset + PRODUCT_PAGE_LIMIT >= productCount || isLoadingProducts} onClick={() => setProductOffset((offset) => offset + PRODUCT_PAGE_LIMIT)}>Tiếp</button>
-              <button type="button" className="bg-ui-button-inverted text-ui-fg-on-inverted rounded px-3 py-2" onClick={() => setIsPickerOpen(false)}>Xong</button>
+              <button type="button" disabled={productOffset === 0 || isLoadingProducts} onClick={() => setProductOffset((offset) => Math.max(0, offset - PRODUCT_PAGE_LIMIT))} className={btn("secondary", "small")}>Trước</button>
+              <button type="button" disabled={productOffset + PRODUCT_PAGE_LIMIT >= productCount || isLoadingProducts} onClick={() => setProductOffset((offset) => offset + PRODUCT_PAGE_LIMIT)} className={btn("secondary", "small")}>Tiếp</button>
+              <button type="button" onClick={() => setIsPickerOpen(false)} className={btn("primary", "base")}>Xong</button>
             </div>
           </div>
         </div>

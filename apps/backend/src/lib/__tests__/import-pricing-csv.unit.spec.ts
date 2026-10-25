@@ -13,6 +13,49 @@ describe("parseImportPricingCsv", () => {
     expect(errors).toEqual([])
     expect(products).toHaveLength(1)
     expect(products[0].variants.map((variant) => variant.title)).toEqual(["S", "M"])
+    expect(products[0].options).toEqual([{ title: "Variant", values: ["S", "M"] }])
+  })
+
+  it("builds Size x Màu options from option: columns", () => {
+    const csv = [
+      "product_title,sku,option:Size,option:Màu,market_price",
+      "Áo,AO-S-DO,S,Đỏ,150000",
+      "Áo,AO-S-XA,S,Xanh,150000",
+      "Áo,AO-M-DO,M,Đỏ,160000",
+    ].join("\n")
+    const { products, errors } = parseImportPricingCsv(csv)
+    expect(errors).toEqual([])
+    expect(products[0].options).toEqual([
+      { title: "Size", values: ["S", "M"] },
+      { title: "Màu", values: ["Đỏ", "Xanh"] },
+    ])
+    expect(products[0].variants[0].options).toEqual({ Size: "S", Màu: "Đỏ" })
+    expect(products[0].variants[0].title).toBe("S / Đỏ")
+  })
+
+  it("lets each product define its own option set", () => {
+    const csv = [
+      "product_title,variant_title,option:Size,option:Màu,market_price",
+      "Áo,,S,Đỏ,150000",
+      "Quần,,29,,250000",
+      "Nón,Mặc định,,,90000",
+    ].join("\n")
+    const { products, errors } = parseImportPricingCsv(csv)
+    expect(errors).toEqual([])
+    const byTitle = Object.fromEntries(products.map((product) => [product.title, product]))
+    expect(byTitle["Áo"].options.map((option) => option.title)).toEqual(["Size", "Màu"])
+    expect(byTitle["Quần"].options.map((option) => option.title)).toEqual(["Size"])
+    expect(byTitle["Nón"].options).toEqual([{ title: "Variant", values: ["Mặc định"] }])
+  })
+
+  it("rejects an inconsistent option set within a product", () => {
+    const csv = [
+      "product_title,option:Size,option:Màu,market_price",
+      "Áo,S,Đỏ,150000",
+      "Áo,M,,160000",
+    ].join("\n")
+    const { errors } = parseImportPricingCsv(csv)
+    expect(errors.some((message) => message.includes("không khớp"))).toBe(true)
   })
 
   it("computes imported total from original + shipping when blank", () => {
@@ -44,27 +87,37 @@ describe("parseImportPricingCsv", () => {
     expect(products[0].variants[0].market_price).toBe(90000)
   })
 
-  it("reports missing market_price and duplicate variant titles", () => {
+  it("reports missing market_price and duplicate variant combinations", () => {
     const csv = [
-      header,
-      "Áo,S,,,,,",
-      "Áo,M,,,,,150000",
-      "Áo,M,,,,,160000",
+      "product_title,option:Size,market_price",
+      "Áo,S,",
+      "Áo,M,150000",
+      "Áo,M,160000",
     ].join("\n")
     const { errors } = parseImportPricingCsv(csv)
     expect(errors.some((message) => message.includes("market_price"))).toBe(true)
     expect(errors.some((message) => message.includes("trùng"))).toBe(true)
   })
 
-  it("rejects a CSV missing required headers", () => {
-    const { products, errors } = parseImportPricingCsv("product_title,variant_title\nÁo,S")
+  it("requires variant_title or an option column", () => {
+    const { products, errors } = parseImportPricingCsv("product_title,market_price\nÁo,150000")
     expect(products).toEqual([])
-    expect(errors[0]).toContain("Thiếu cột bắt buộc")
+    expect(errors[0]).toContain("variant_title")
+  })
+
+  it("strips a leading UTF-8 BOM (Excel-saved files)", () => {
+    const csv = "\uFEFF" + [header, "Áo,S,AO-S,80000,10000,,150000"].join("\n")
+    const { products, errors } = parseImportPricingCsv(csv)
+    expect(errors).toEqual([])
+    expect(products[0].title).toBe("Áo")
   })
 
   it("parses the generated template without errors", () => {
     const { products, errors } = parseImportPricingCsv(buildImportPricingTemplateCsv())
     expect(errors).toEqual([])
-    expect(products).toHaveLength(2)
+    expect(products).toHaveLength(3)
+    const ao = products.find((product) => product.title === "Áo thun basic")
+    expect(ao?.options.map((option) => option.title)).toEqual(["Size", "Màu"])
+    expect(ao?.variants).toHaveLength(4)
   })
 })
